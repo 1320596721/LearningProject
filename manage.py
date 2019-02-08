@@ -3,8 +3,9 @@
 
 from nowStagram import app, db
 from flask_script import Manager
-from nowStagram.models import User, Image, Comment
+from nowStagram.models import User, Image, Comment, Like
 import random
+import unittest
 from sqlalchemy import or_, and_
 
 
@@ -25,7 +26,19 @@ def init_database():
             db.session.add(Image(get_image_url(), i+1))
             for k in range(0, 3):
                 db.session.add(Comment('This is a comment ' + str(k), 1+3*i+j, i+1))
+            for l in range(0, 3):
+                db.session.add((Like(random.randint(1, i+1), Image.query.filter_by(user_id=i+1).first().id)))
+    db.session.add(User('lgx', 'lgx', 'admin', ''))
     db.session.commit()
+
+
+@manager.command
+def run_test():
+    db.drop_all()
+    db.create_all()
+    tests = unittest.TestLoader().discover('./')
+    unittest.TextTestRunner().run(tests)
+    pass
 
 
 @manager.command

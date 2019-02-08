@@ -3,7 +3,7 @@
 
 from nowStagram import app, db
 from flask import render_template, redirect, request, flash, get_flashed_messages, send_from_directory
-from .models import Image, User, Comment
+from .models import Image, User, Comment, Like
 import random
 import hashlib
 import json
@@ -113,6 +113,7 @@ def login():
     m = hashlib.md5()
     m.update((password + user.salt).encode('utf8'))
     if m.hexdigest() != user.password:
+        print(user.salt)
         return redirect_with_msg('/reglogin/', u'密码错误', 'reglogin')
 
     login_user(user)
@@ -171,3 +172,41 @@ def add_comment():
     return json.dumps({'code': 0, 'id': comment.id, 'content': content,
                        'username': comment.user.username,
                        'user_id': comment.user.id})
+
+
+# 新增加的功能
+@app.route('/thumbs_up/', methods={'post'})  # 点赞
+@login_required
+def thumbs_up():
+    image_id = int(request.values['image_id'])
+    like = Like(current_user.id, image_id)
+    db.session.add(like)
+    db.session.commit()
+    return json.dumps({'code': 0, 'username': current_user.username,
+                       'image_id': like.image_id})
+
+
+@app.route('/set_admin/')
+@login_required
+def set_admin():
+    if current_user.power == 'admin':
+        user_id = request.values['user_id']
+        user = User.query.get(user_id)
+        user.power = 'admin'
+        db.session.commit()
+        return json.dumps({'code': 0, 'admin': current_user.id, 'new_admin': user.id})
+    return json.dumps({'code': 1})
+
+
+@app.route('/admin_image_delete/', methods={'post'})
+@login_required
+def admin_image_delete():
+    image_id = request.values['image_id']
+    if current_user.power == 'admin':
+        image = Image.query.filter_by(id=image_id).first()
+        db.session.delete(image)
+        db.session.commit()
+        return json.dumps({'code': 0, 'admin': current_user.id})
+    return json.dumps({'code': 1})
+
+

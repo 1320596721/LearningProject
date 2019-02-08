@@ -4,6 +4,7 @@
 from nowStagram import db, login_manager
 import random
 from datetime import datetime
+import hashlib
 
 
 class Comment(db.Model):
@@ -29,6 +30,7 @@ class Image(db.Model):
     url = db.Column(db.String(512))
     created_date = db.Column(db.DateTime)
     comments = db.relationship('Comment')
+    who_thumbs_up = db.relationship('Like')
 
     def __init__(self, url, user_id):
         self.url = url
@@ -39,18 +41,35 @@ class Image(db.Model):
         return '<Image %d %s>' % (self.id, self.url)
 
 
+class Like(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    image_id = db.Column(db.Integer, db.ForeignKey('image.id'))
+
+    def __init__(self, user_id, image_id):
+        self.user_id = user_id
+        self.image_id = image_id
+
+    def __repr__(self):
+        return '<Like %d %d>' % (self.user_id, self.image_id)
+
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    power = db.Column(db.String(10), default='normal')
     username = db.Column(db.String(80), unique=True)
     password = db.Column(db.String(32))
     salt = db.Column(db.String(32))
     head_url = db.Column(db.String(256))
     images = db.relationship('Image', backref='user', lazy='dynamic')
 
-    def __init__(self, username, password, salt=''):
+    def __init__(self, username, password, power='normal', salt=''):
         self.username = username
-        self.password = password
         self.salt = salt
+        m = hashlib.md5()
+        m.update((password + self.salt).encode('utf8'))
+        self.password = m.hexdigest()
+        self.power = power
         self.head_url = 'https://images.nowcoder.com/head/' + str(random.randint(0, 1000)) + 'm.png'
 
     def __repr__(self):
